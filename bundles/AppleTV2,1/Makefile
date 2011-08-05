@@ -1,5 +1,5 @@
 all:
-	make -C 8M89
+	make -C 8C154
 	
 clean:
-	make clean -C 8M89
+	make clean -C 8C154

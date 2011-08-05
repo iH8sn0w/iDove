@@ -19,7 +19,6 @@
 
 #include <stdio.h>
 
-#include "aes.h"
 #include "bdev.h"
 #include "lock.h"
 #include "task.h"
@@ -30,10 +29,25 @@
 LinkedList* gImageList = NULL;
 
 void* find_image_list() {
-		unsigned int ref = find_string(TARGET_BASEADDR, TARGET_BASEADDR, 0x50000, "tobi");
-		//unsigned int ref = find_string(TARGET_BASEADDR, TARGET_BASEADDR, 0x50000, "blli"); /* temp fix for 4.2.1+ bdev nor0 LLB shit... */
+	if(strstr((char*) (TARGET_BASEADDR + 0x200), "n88ap")) {		
+		unsigned int ref = find_string(TARGET_BASEADDR, TARGET_BASEADDR, 0x50000, "blli");
 		ImageDescriptor* image = (ImageDescriptor*)(ref-0x1C);
 		return image->list.prev;
+	} else if(strstr((char*) (TARGET_BASEADDR + 0x200), "n72ap")) {		
+		unsigned int ref = find_string(TARGET_BASEADDR, TARGET_BASEADDR, 0x50000, "blli");
+		ImageDescriptor* image = (ImageDescriptor*)(ref-0x1C);
+		return image->list.prev; 
+
+	} else if(strstr((char*) (TARGET_BASEADDR + 0x200), "n82ap")) {		
+		unsigned int ref = find_string(TARGET_BASEADDR, TARGET_BASEADDR, 0x50000, "blli");
+		ImageDescriptor* image = (ImageDescriptor*)(ref-0x1C);
+		return image->list.prev; 
+	
+	} else {
+		unsigned int ref = find_string(TARGET_BASEADDR, TARGET_BASEADDR, 0x50000, "tobi");
+		ImageDescriptor* image = (ImageDescriptor*)(ref-0x1C);
+		return image->list.prev;		
+}
 }
 
 int image_init() {
@@ -41,7 +55,7 @@ int image_init() {
 	if(gImageList == NULL) {
 		puts("Unable to find gImageList\n");
 	} else {
-		printf("Found gImageList at 0x%x\n", gImageList);
+		//printf("Found gImageList at 0x%x\n", gImageList);
 		cmd_add("image", &image_cmd, "display and operate on for firmware images");
 	}
 	return 0;
@@ -55,20 +69,12 @@ int image_cmd(int argc, CmdArg* argv) {
 		puts("usage: image <list/load> [options]\n");
 		puts("  list                   \t\tdisplay list of bdev images\n");
 		puts("  load <image> <address> \t\tload an img3 from bdev\n");
-		puts("  decrypt <address>      \t\tdecrypt an img3 in memory\n");
 		return 0;
 	}
 
 	action = argv[1].string;
 	if(!strcmp(action, "list")) {
 		image_display_list();
-	}
-
-	if(argc == 3) {
-		if(!strcmp(action, "decrypt")) {
-			address = (void*) argv[2].uinteger;
-			return image_decrypt(address);
-		}
 	}
 
 	if(argc == 4) {
@@ -97,8 +103,6 @@ void image_display_list() {
 		type[4] = '\0';
  		char* pigs = (char*)malloc;
                 sprintf(pigs, "  %p: bdev: %p type: %s offset: 0x%05x len: 0x%x\n", image, image->device, type, image->startAddress, image->info.imageSize);
-		printf("  %p: bdev: %p type: %s offset: 0x%05x len: 0x%x\n", image,
-				image->device, type, image->startAddress, image->info.imageSize);
 		puts(pigs);
 
 		list = image->list.next;
@@ -121,49 +125,6 @@ void* image_find_tag(void* image, unsigned int tag, unsigned int size) {
 	return 0;
 }
 
-int image_decrypt(void* image) {
-	void* data = NULL;
-
-	ImageHeader* header = (ImageHeader*) image;
-	data = image_find_tag(image, IMAGE_DATA, header->fullSize);
-
-	if (data == 0) {
-		puts("Unable to find DATA tag\n");
-		return -1;
-	}
-
-	ImageKbag* kbag = (ImageKbag*) image_find_tag(image, IMAGE_KBAG, header->fullSize);
-	if (kbag == 0) {
-		puts("Unable to find KBAG tag\n");
-		return -1;
-	}
-
-	ImageTagHeader* data_header = (ImageTagHeader*) data;
-    data = (void*) data_header + sizeof(ImageTagHeader);
-
-    /* Decrypt kbag */
-#ifdef S5L8720X
-    //printf("Decrypting kbag of size 0x%x with type 0x%x\n", kAesSize128, kAesTypeGid);
-    //aes_crypto_cmd(kAesDecrypt, kbag->iv, kbag->iv, kAesSize128, kAesTypeGid, 0, 0);
-#else
-    //printf("Decrypting kbag of size 0x%x with type 0x%x\n", kAesSize256, kAesTypeGid);
-	//aes_crypto_cmd(kAesDecrypt, kbag->iv, kbag->iv, kAesSize256, kAesTypeGid, 0, 0);
-#endif*/
-
-printf("img3 has been loaded and mapped.\n");
-
-    /* Decrypt data */
-    //FIXME: derive AES type from kbag type
-#ifdef S5L8720X
-    //printf("Decrypting data of size 0x%x with type 0x%x\n", 0x20, kAesTypeGid);
-   // aes_crypto_cmd(kAesDecrypt, data, data, (data_header->dataSize - (data_header->dataSize % 16)), kAesType128, kbag->key, kbag->iv);
-
-#else
-    //printf("Decrypting data of size 0x%x with type 0x%x\n", 0x30, kAesTypeGid);
-   // aes_crypto_cmd(kAesDecrypt, data, data, (data_header->dataSize - (data_header->dataSize % 16)), kAesType256, kbag->key, kbag->iv);
-#endif
-	return 0;
-}
 
 ImageDescriptor* image_find(unsigned int signature) {
 	LinkedList* list = gImageList->next;
@@ -186,6 +147,4 @@ int image_load(unsigned int signature, void* dataout, unsigned int maxsize) {
 
 	image->device->read(image->device, dataout,
 			(void*) image->startAddress, 0, image->info.imageSize);
-
-	image_decrypt(dataout);
 }

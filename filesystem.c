@@ -44,27 +44,17 @@ int fs_init() {
 	}
 	if(fs_mount == NULL) {
 	puts("Unable to find fs_mount\n");
-	} else {
-		//puts("got 0\n");
-		printf("Found fs_mount at 0x%x\n", fs_mount);
-	}
+	} 
 
 	//fs_unmount = find_fs_unmount();
 	if(fs_unmount == NULL) {
 		puts("Unable to find fs_unmount\n");
-	} else {
-		//puts("got 1\n");
-		printf("Found fs_unmount at 0x%x\n", fs_unmount);
 	}
 
 	//fs_load_file = find_fs_load_file();
 	if(fs_load_file == NULL) {
 		puts("Unable to find fs_load_file\n");
-	} else {
-		//puts("got 2\n======================\n");
-		printf("Found fs_load_file at 0x%x\n", fs_load_file);
-
-	}
+	} 
 
 	if(fs_unmount && fs_load_file) {
 		cmd_add("fs", &fs_cmd, "perform operations on the filesystem");

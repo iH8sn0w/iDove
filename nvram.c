@@ -38,7 +38,7 @@ int nvram_init() {
 	if(gNvramList == NULL) {
 		puts("Unable to find gNvramList\n");
 	} else {
-		printf("Found gNvramList at 0x%x\n", gNvramList);
+		//printf("Found gNvramList at 0x%x\n", gNvramList);
 		cmd_add("nvram", &nvram_cmd, "view and modify nvram variables");
 	}
 	return 0;

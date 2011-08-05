@@ -39,6 +39,10 @@ void* gBootBaseaddr = NULL;
 int cout_count = 0;
 
 void* find_printf() {
+#ifdef TARGET_PRINTF
+return (void*) TARGET_PRINTF;	
+#endif
+
 	int i = 0;
 	int j = 0;
 	unsigned int sp;
@@ -60,12 +64,20 @@ void* find_printf() {
 }
 
 void* find_free() {
+#ifdef TARGET_FREE
+return (void*) TARGET_FREE;	
+#endif
 	return find_function("free", TARGET_BASEADDR, TARGET_BASEADDR);
 }
 
 void* find_malloc() {
+#ifdef TARGET_MALLOC
+return (void*) TARGET_MALLOC;	
+#endif
+
 	void* bytes = patch_find(TARGET_BASEADDR, 0x40000, "\x80\xB5\x00\xAF\x01\x21\x00\x22", 8);
-	return bytes+1;
+	if (bytes==NULL) return NULL;
+	return bytes + 1;
 }
 
 int common_init() {
@@ -74,21 +86,21 @@ int common_init() {
 		fb_print("Unable to find printf\n");
 		return -1;
 	} else {
-		printf("Found printf at 0x%x\n", _printf);
+		//printf("Found printf at 0x%x\n", _printf);
 	}
 
 	_malloc = find_malloc();
 	if(_malloc == NULL) {
 		puts("Unable to find malloc\n");
 	} else {
-		printf("Found malloc at 0x%x\n", _malloc);
+		//printf("Found malloc at 0x%x\n", _malloc);
 	}
 
 	_free = find_free();
 	if(_free == NULL) {
 		puts("Unable to find free\n");
 	} else {
-		printf("Found free at 0x%x\n", _free);
+		//printf("Found free at 0x%x\n", _free);
 	}
 
 	return 0;

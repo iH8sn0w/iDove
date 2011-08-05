@@ -55,6 +55,7 @@ extern int(*jump_to)(int flags, void* addr, int phymem);
 extern int(*load_ramdisk)(int argc);
 
 int cmd_init();
+int cmd_detect();
 void cmd_add(char* name, CmdFunction handler, char* description);
 
 int cmd_help(int argc, CmdArg* argv);
@@ -62,5 +63,5 @@ int cmd_rdboot(int argc, CmdArg* argv);
 int cmd_test(int argc, CmdArg* argv);
 int cmd_jump(int argc, CmdArg* argv);
 int cmd_pie(int argc, CmdArg* argv);
-int cmd_pie2(int argc, CmdArg* argv);
+unsigned char* patch_find(unsigned char* start, int length, unsigned char* find, int size);
 #endif

@@ -27,6 +27,6 @@ int memory_init();
 int memory_cmd(int argc, CmdArg* argv);
 
 int memory_search(char* source, unsigned int size, char* bytes);
-
+int memory_sha1(char* source,char* destination,char* storage);
 #endif /* LOCK_H */
 

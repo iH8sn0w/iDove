@@ -21,14 +21,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "aes.h"
 #include "bdev.h"
-#include "radio.h"
 #include "nvram.h"
 #include "image.h"
-#include "patch.h"
 #include "memory.h"
-#include "kernel.h"
 #include "common.h"
 #include "commands.h"
 #include "filesystem.h"
@@ -37,19 +33,14 @@
 Bool gGpHasInit = FALSE;
 
 int gp_init() {
-	if(common_init()) return -1;
+	if(common_init()) return -1; //armv6 works.
 	if(cmd_init()) return -1;
-	if(uart_init()) return -1;
-	if(radio_init()) return -1;
-	if(patch_init()) return -1;
 	if(memory_init()) return -1;
 	if(task_init()) return -1;
-	if(aes_init()) return -1;
 	if(bdev_init()) return -1;
 	if(image_init()) return -1;
 	if(nvram_init()) return -1;
 	if(fs_init()) return -1;
-	if(kernel_init()) return -1;
 	if(fb_init()) return -1;
 	gGpHasInit = TRUE;
 	return 0;
@@ -67,21 +58,29 @@ int main(int argc, CmdArg* argv) {
 		puts("iFaith Thanks & Credits:\n");
 		puts("=========================\n");
 		puts("* AKi_nG\n");
+		puts("* bile\n");
 		puts("* Chronic Dev-Team\n");
 		puts("* CPICH\n");
 		puts("* cj\n");
+		puts("* demize\n");
 		puts("* geohot\n");
 		puts("* GreySyntax\n");
+		puts("* iFish12\n");
 		puts("* msftguy\n");
 		puts("* MuscleNerd\n");
 		puts("* Neal\n");
 		puts("* planetbeing\n");
 		puts("* pod2g\n");
 		puts("* posixninja\n");
+		puts("* qwertyoruiop\n");
 		puts("* sbingner\n");
 		puts("* ThePirate\n");
 		puts("* vonswanko\n");
 		puts("=========================\n");
+		cmd_detect();
+		fs_mount("nand0a", "hfs", "/boot");		
+		//puts("HFS+ filesystem mounted.\n")
+		//puts("=========================\n");		
 		return 0;
 	}
 

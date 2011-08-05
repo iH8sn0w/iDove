@@ -1,5 +1,5 @@
 all:
-	make -C 7B500
+	make -C 8C148
 	
 clean:
-	make clean -C 7B500
+	make clean -C 8C148

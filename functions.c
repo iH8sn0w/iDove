@@ -33,19 +33,13 @@ static unsigned char push_r4_to_r7_lr[] = { 0xF0, 0xB5 };
 static unsigned char push_r4_r5_r7_lr[] = { 0xB0, 0xB5 };
 
 static unsigned char* functions[][3] = {
-	{ "aes_crypto_cmd", "aes_crypto_cmd", push_r4_r7_lr },
 	{ "free", "heap_panic",  push_r4_to_r7_lr },
 	{ "fs_mount", "fs_mount", push_r4_to_r7_lr },
-	{ "cmd_ramdisk", "Ramdisk too large", push_r4_r5_r7_lr },
 	{ "cmd_go", "jumping into image", push_r7_lr },
 	{ "image_load", "image validation failed but untrusted images are permitted", push_r4_to_r7_lr },
-	{ "fsboot", "root filesystem mount failed", push_r4_to_r7_lr },
-	{ "kernel_load", "rd=md0", push_r4_to_r7_lr },
 	{ "task_yield", "task_yield", push_r4_r5_r7_lr },
 	{ "default_block_write", "no reasonable default block write routine", push_r7_lr },
 	{ "populate_images", "image %p: bdev %p type %c%c%c%c offset 0x%x", push_r4_r5_r7_lr },
-	{ "uart_read", "uart_read", push_r4_to_r7_lr },
-	{ "uart_write", "uart_write", push_r4_to_r7_lr },
 	{ "task_create", "task_create", push_r4_to_r7_lr },
 	{ "task_exit", "task_exit", push_r4_to_r7_lr },
 	{ NULL, NULL, NULL }

@@ -37,7 +37,7 @@ int bdev_init() {
 	if(gBdevList == NULL) {
 		puts("Unable to find gBdevList\n");
 	} else {
-		printf("Found gBdevList at 0x%x\n", gBdevList);
+		//printf("Found gBdevList at 0x%x\n", gBdevList);
 		cmd_add("bdev", &bdev_cmd, "read or write data to block devices");
 	}
 	return 0;

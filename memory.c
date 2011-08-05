@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "sha.h"
 #include "lock.h"
 #include "memory.h"
 #include "common.h"
@@ -36,15 +37,16 @@ int memory_cmd(int argc, CmdArg* argv) {
 	char* bytes = NULL;
 	char* action = NULL;
 	char* source = NULL;
+	char* storage = NULL;
 	char* destination = NULL;
 	unsigned int size = 0;
 
 	if(argc < 4) {
 		puts("usage: memory <search/dump/copy> [options]\n");
 		puts("  search <address> <size> <bytes>\tfind address of specified byte sequence\n");
-		puts("  dump <address> <size>          \tdump memory from address over usb\n");
 		puts("  copy <from> <to> <size>        \tcopy memory from one address to another\n");
 		puts("  move <from> <to> <size>        \tmove memory from one address to another\n");
+		puts("  sha1 <from> <to> <address>     \tsha1 memory from one address to another\n");
 		return 0;
 	}
 
@@ -58,12 +60,6 @@ int memory_cmd(int argc, CmdArg* argv) {
 		}
 	}
 
-	if(argc == 4) {
-		if(!strcmp(action, "dump")) {
-			printf("Not implemented yet\n");
-			return 0;
-		}
-	}
 
 	if(argc == 5) {
 		if(!strcmp(action, "copy")) {
@@ -83,7 +79,54 @@ int memory_cmd(int argc, CmdArg* argv) {
 		}
 	}
 
+	if(argc == 5) { 
+		if(!strcmp(action, "sha1")) {
+			source = (char*) argv[2].uinteger;
+			destination = (char*) argv[3].uinteger;
+			storage = (char*) argv[4].uinteger;
+			return memory_sha1(source, destination, storage);
+		}
+	}
+
 	return 0;
+}
+
+int memory_sha1(char* source,char* destination,char* storage) {
+int meha = source; // top of shsh
+int mehb = destination; //end of shsh
+dohexdump(source, mehb - meha,storage);
+}
+
+inline int sha_endian_flip(unsigned int x)
+{
+return (x>>24) | ((x<<8) & 0x00FF0000) | ((x>>8) & 0x0000FF00) | (x<<24);
+}
+
+
+int shait(char* text, char* address)
+{
+int i;
+static SHA1Context sha; 
+SHA1Reset(&sha);
+SHA1Input(&sha, (const unsigned char *) text, strlen(text));
+SHA1Result(&sha);
+int* addr= address;
+for(i = 0; i < 5 ; i++)
+{
+//printf("%08X", sha.Message_Digest[i]);
+*addr= sha_endian_flip(sha.Message_Digest[i]);
+addr++;
+}
+}
+
+void dohexdump(unsigned char* buf, unsigned int len, char* address) {
+  char* blah1 = (char*)malloc(len * 2 + 1);
+  int i;
+  for (i = 0; i < len; i++) {
+    sprintf(blah1 + i * 2, "%02X", buf[i]);
+  }
+	shait(blah1,address);
+	return blah1;
 }
 
 int memory_search(char* source, unsigned int size, char* bytes) {
@@ -107,14 +150,13 @@ int memory_search(char* source, unsigned int size, char* bytes) {
 	for(i = 0; i < size; i++) {
 		if(!memcmp(&source[i], buffer, length)) {
 			char* chair = (char*)malloc(length);
-			printf("Found byte sequence at 0x%x\n", &source[i]);
-			sprintf(chair, "0x%X", &source[i]);			
+			char* chair2 = (char*)malloc(length);
+			printf("Byte Sequence is at: 0x%X\n", &source[i]);
+			sprintf(chair, "0x%X", &source[i]);
 			nvram_set_var("auto-boot",chair);
-			printf("Look under yer chair!!! =)\n");
 			return (int) &source[i];
 		}
 	}
-
-	printf("unable to find byte sequence\n");
+	puts("unable to find byte sequence\n");
 	return -1;
 }

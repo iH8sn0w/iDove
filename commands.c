@@ -25,8 +25,8 @@
 //This is for the pie :)
 #include <ctype.h>
 
+#include "image.h"
 #include "lock.h"
-#include "patch.h"
 #include "common.h"
 #include "commands.h"
 #include "functions.h"
@@ -39,17 +39,16 @@ CmdInfo** gCmdCommands = NULL;
 
 unsigned char* gCmdListEnd = NULL;
 unsigned char* gCmdListBegin = NULL;
-int(*fsboot)(void) = NULL;
 int(*jump_to)(int flags, void* addr, int phymem) = NULL;
-int(*load_ramdisk)(int argc) = NULL;
-
-void hooked(int flags, void* addr, int phymem);
 
 /*
  * Private Functions
  */
 
 void* find_cmd_list_begin() {
+#ifdef TARGET_CMD_LIST_BEGIN 
+return (void*) TARGET_CMD_LIST_BEGIN;
+#endif	
 	unsigned int reference = find_reference(TARGET_BASEADDR, TARGET_BASEADDR, 0x40000, "save current environment to flash");
 	if(reference == 0) {
 		printf("Unable to find saveenv description reference\n");
@@ -67,6 +66,9 @@ void* find_cmd_list_begin() {
 }
 
 void* find_cmd_list_end() {
+#ifdef TARGET_CMD_LIST_END
+return (void*) TARGET_CMD_LIST_END;
+#endif
 	int i = 0;
 	if(gCmdListBegin != NULL) {
 		for(i = 0; i < 0x20; i++) {
@@ -80,6 +82,9 @@ void* find_cmd_list_end() {
 }
 
 void* find_jump_to() {
+#ifdef TARGET_JUMP_TO
+return (void*) TARGET_JUMP_TO;
+#endif
 	void* bytes = NULL;
 	if(strstr((char*) (TARGET_BASEADDR + 0x200), "n72ap")) {
 		bytes = patch_find(TARGET_BASEADDR, 0x40000, "\xf0\xb5\x03\xaf\x04\x1c\x15\x1c", 8);
@@ -91,14 +96,6 @@ void* find_jump_to() {
 	return bytes;
 }
 
-void* find_load_ramdisk() {
-	return find_function("cmd_ramdisk", TARGET_BASEADDR, TARGET_BASEADDR);
-}
-
-void* find_fsboot() {
-	return find_function("fsboot", TARGET_BASEADDR, TARGET_BASEADDR);
-}
-
 int cmd_init() {
 	if(gCmdHasInit) return 0;
 
@@ -107,64 +104,16 @@ int cmd_init() {
 	gCmdHasInit = TRUE;
 	gCmdCommands = (CmdInfo**) (LOADADDR + 0x01800000);
 
-	gCmdListBegin = find_cmd_list_begin();
-	if(gCmdListBegin == NULL) {
-		puts("Unable to find gCmdListBegin\n");
-	} else {
-		printf("Found gCmdListBegin at 0x%x\n", gCmdListBegin);
-	}
-
-	gCmdListEnd = find_cmd_list_end();
-	if(gCmdListEnd == NULL) {
-		puts("Unable to find gCmdListEnd\n");
-	} else {
-		printf("Found gCmdListEnd at 0x%x\n", gCmdListEnd);
-	}
-
-	// add all built in commands to our private commands
-	if(gCmdListBegin && gCmdListEnd) {
-		CmdInfo** current = (CmdInfo**) gCmdListBegin;
-		for (i = 0; &current[i] < (CmdInfo**) gCmdListEnd; i++) {
-			cmd_add(current[i]->name, current[i]->handler, current[i]->description);
-		}
-	}
 	// add our essential commands
 	cmd_add("help", &cmd_help, "display all available commands");
-	//cmd_add("echo", &cmd_echo, "write characters back to screen");
-	//cmd_add("hexdump", &cmd_hexdump, "dump section of memory to screen");
-	//cmd_add("mw", &cmd_mw, "write value to specified address");
-	//cmd_add("md", &cmd_md, "display value at specified address");
-	//cmd_add("call", &cmd_call, "calls a subroutine passing args to it");
+	cmd_add("detect", &cmd_detect, "Detect if factory or iTunes restored.");
 	cmd_add("pie", &cmd_pie, "The pie.");
-	cmd_add("pie2", &cmd_pie2, "The pie. But Worse!");
-	//cmd_add("pie2", &bye_spaces, "This is Pie 2.");
-	//cmd_add("rdboot", &cmd_rdboot, "patch and boot kernel with ramdisk");
-	//cmd_add("test", &cmd_test, "test finding functions offsets");
-
 	jump_to = find_jump_to();
 	if(jump_to == NULL) {
-		puts("Unable to find jump_to\n");
+		
 	} else {
-		printf("Found jump_to at 0x%x\n", jump_to);
 		cmd_add("jump", &cmd_jump, "shutdown current image and jump into another");
 	}
-
-	fsboot = find_fsboot();
-	if(fsboot == NULL) {
-		puts("Unable to find fsboot\n");
-	} else {
-		printf("Found fsboot at 0x%x\n", fsboot);
-		//cmd_add("fsboot", &cmd_fsboot, "patch and boot kernel from filesystem");
-	}
-
-	load_ramdisk = find_load_ramdisk();
-	if(load_ramdisk == NULL) {
-		puts("Unable to find load_ramdisk\n");
-	} else {
-		printf("Found load_ramdisk at 0x%x\n", load_ramdisk);
-		//cmd_add("ramdisk", &cmd_ramdisk, "create a ramdisk from the specified address");
-	}
-
 	return 0;
 }
 
@@ -204,6 +153,40 @@ void cmd_start() {
 /*
  * Public Functions
  */
+
+int cmd_detect() {
+	//Load Apple Logo to Load Addresses.
+	image_load(0x6C6F676F, (LOADADDR+2000000), 0x100000);
+	int i = 0;
+	char buffer[64];
+	char* bytes = "50726F642D466163746F7279";
+	char* source = (LOADADDR+2000000);
+	unsigned int size = 0x10000;
+	unsigned int byte = 0;
+
+	int length = strlen(bytes) / 2;
+	memset(buffer, '\0', 64);
+	for(i = 0; i < length; i++) {
+		sscanf(bytes, "%02x", &byte);
+		buffer[i] = byte;
+		bytes += 2;
+	}
+
+	for(i = 0; i < size; i++) {
+		if(!memcmp(&source[i], buffer, length)) {
+			// WE ARE FACTORY!!!!
+			puts("* Device is Factory-restored.\n");
+			puts("=========================\n");
+			nvram_set_var("auto-boot","factory");
+			return 0;		
+			}
+	}
+	puts("* Device is iTunes-restored.\n");
+	puts("=========================\n");
+	nvram_set_var("auto-boot","itunes");
+	return 0;
+}
+
 int cmd_help(int argc, CmdArg* argv) {
 	int i = 0;
 	enter_critical_section();
@@ -237,41 +220,29 @@ int cmd_jump(int argc, CmdArg* argv) {
 
 	return 0;
 }
+
 int cmd_pie(int argc, CmdArg* argv) {
-if(argc >= 2) {
+if(argc >= 3) {
 int i = 0;
-//puts("\nNow dumping ");
-enter_critical_section();
 for(i = 1; i < argc; i++) {
-//puts(argv[i].string);
-//puts(" as 0x37...\n\n");
-hexdump_pie(argv[i].uinteger,0x37);
-//puts("\n");
-exit_critical_section();
+	enter_critical_section();
+	hexdump_pie(argv[1].uinteger,argv[2].uinteger);
+	exit_critical_section();
 }
 return 0;
 }
-puts("\nusage: pie <address>\n\n");
+puts("\nusage: pie <address> <length>\n\n");
 }
 
-int cmd_pie2(int argc, CmdArg* argv) {
-if(argc >= 2) {
-int i = 0;
-//puts("\nNow dumping ");
-enter_critical_section();
-for(i = 1; i < argc; i++) {
-//puts(argv[i].string);
-//puts(" as 0x2B...\n\n");
-hexdump_pie(argv[i].uinteger,0x2B);
-//puts("\n");
-exit_critical_section();
+unsigned char* patch_find(unsigned char* start, int length, unsigned char* find, int size) {
+	int i = 0;
+	for(i = 0; i < length; i++) {
+		if(!memcmp(&start[i], find, size)) {
+			return &start[i];
+		}
+	}
+	return NULL;
 }
-return 0;
-}
-puts("\nusage: pie2 <address>\n\n");
-}
-
-
 
 void hexdump_pie(unsigned char* buf, unsigned int len) {
   char* blah = (char*)malloc(len * 2 + 1);
@@ -279,85 +250,7 @@ void hexdump_pie(unsigned char* buf, unsigned int len) {
   for (i = 0; i < len; i++) {
     sprintf(blah + i * 2, "%02X", buf[i]);
   }
-printf("hexdump: %s\n", blah);
-//puts("Setting hexdump as boot variable auto-boot...\n");
-nvram_set_var("auto-boot",blah);
-//puts("Done.\n");
-}
-
-int cmd_echo(int argc, CmdArg* argv) {
-	int i = 0;
-	if(argc >= 2) {
-		enter_critical_section();
-		for(i = 1; i < argc; i++) {
-			printf("%s ", argv[i].string);
-		}
-		printf("\n");
-		exit_critical_section();
-		return 0;
-	}
-	
-	puts("usage: echo <message>\n");
-	return 0;
-}
-
-int cmd_hexdump(int argc, CmdArg* argv) {
-	int i = 0;
-	unsigned int len = 0;
-	unsigned char* buf = NULL;
-	if(argc != 3) {
-		puts("usage: hexdump <address> <length>\n");
-		return 0;
-	}
-
-	len = argv[2].uinteger;
-	buf = (unsigned char*) argv[1].uinteger;
-	hexdump(buf, len);
-
-	return 0;
-}
-
-
-int cmd_rdboot(int argc, CmdArg* argv) {
-	int i = 0;
-	void* address = NULL;
-	void(*hooker)(int flags, void* addr, void* phymem) = &hooked;
-	if(argc != 1) {
-		puts("usage: rdboot\n");
-		return 0;
-	}
-
-	// search for jump_to function
-	if(strstr((char*) (TARGET_BASEADDR + 0x200), "n72ap")) {
-		jump_to = patch_find(TARGET_BASEADDR, 0x30000, "\xf0\xb5\x03\xaf\x04\x1c\x15\x1c", 8);
-	} else {
-		// 80  B5  00  AF  04  46  15  46
-		jump_to = patch_find(TARGET_BASEADDR, 0x30000, "\x80\xb5\x00\xaf\x04\x46\x15\x46", 8);
-	}
-	printf("Found jump_to function at %p\n", jump_to);
-
-	memcpy(jump_to, "\x00\x4b\x98\x47", 4);
-	memcpy(jump_to+4, &hooker, 4);
-
-	printf("Hooked jump_to function to call 0x%08x\n", hooker);
-
-	//call address
-	printf("Calling bootx\n");
-
-	return 0;
-}
-
-int cmd_test(int argc, CmdArg* argv) {
-	printf("aes_crypto_cmd: 0x%08x\n", find_function("aes_crypto_cmd", TARGET_BASEADDR, TARGET_BASEADDR));
-	printf("free: 0x%08x\n", find_function("free", TARGET_BASEADDR, TARGET_BASEADDR));
-	printf("cmd_ramdisk: 0x%08x\n", find_function("cmd_ramdisk", TARGET_BASEADDR, TARGET_BASEADDR));
-	printf("fs_mount: 0x%08x\n", find_function("fs_mount", TARGET_BASEADDR, TARGET_BASEADDR));
-	return 0;
-}
-
-int cmd_ramdisk(int argc, CmdArg* argv) {
-	printf("%d\n", load_ramdisk(3));
-	return 0;
+	nvram_set_var("auto-boot",blah);
 }
 
 void clear_icache() {
@@ -370,21 +263,3 @@ void clear_icache() {
     __asm__("nop");
 };
 
-void hooked(int flags, void* addr, int phymem) {
-	// patch kernel
-	printf("Entered hooked jump_to function!!!\n");
-	printf("Patching kernel\n");
-	patch_kernel((void*)(LOADADDR - 0x1000000), 0xA00000);
-
-	printf("Replace hooking code with original\n");
-	if(strstr((char*) (IBOOT_BASEADDR + 0x200), "n72ap")) {
-		memcpy(jump_to, "\xf0\xb5\x03\xaf\x04\x1c\x15\x1c", 8);
-	} else {
-		memcpy(jump_to, "\x80\xb5\x00\xaf\x04\x46\x15\x46", 8);
-	}
-	clear_icache();
-
-	jump_to++;
-	printf("Calling %p\n", jump_to);
-	jump_to(flags, addr, phymem);
-}
